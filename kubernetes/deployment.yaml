@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: multitool
+  name: multitool
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: multitool
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: multitool
+    spec:
+      containers:
+      - image: przemekmalak/multitool
+        name: multitool
+        env:
+        - name: RETURN_TEXT
+        value: "returned text"
+        resources: {}
