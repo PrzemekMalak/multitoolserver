@@ -8,6 +8,8 @@ import (
 	"os"
 )
 
+var requestCount int = 0
+
 func name() string {
 	name, err := os.Hostname()
 	if err != nil {
@@ -19,7 +21,7 @@ func name() string {
 func ip() string {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		return " "
+		return ""
 	}
 	for _, address := range addrs {
 		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
@@ -42,6 +44,10 @@ func i(w http.ResponseWriter, r *http.Request) {
 
 func hello(w http.ResponseWriter, r *http.Request) {
 	s := "HostName: " + name() + " IP Address: " + ip()
+	var text string = os.Getenv("RETURN_TEXT")
+	if text != "" {
+		s = s + " " + text
+	}
 	fmt.Fprintln(w, s)
 }
 
@@ -59,13 +65,32 @@ func h(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func err2(w http.ResponseWriter, r *http.Request) {
+	requestCount++
+	if requestCount%2 == 0 {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	} else {
+		fmt.Fprintln(w, "OK")
+	}
+}
+
+func err(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+}
+
 func ls(w http.ResponseWriter, r *http.Request) {
 	d := r.URL.Query()
-	dir := d["path"]
-	fmt.Println(dir)
-	files, err := ioutil.ReadDir(dir[0])
+	var dir string
+	if len(d["path"]) > 0 {
+		dir = d["path"][0]
+	}
+	if len(dir) == 0 {
+		dir = "/"
+	}
+	fmt.Fprintln(w, dir)
+	files, err := ioutil.ReadDir(dir)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(w, "")
 	}
 
 	for _, f := range files {
@@ -74,12 +99,14 @@ func ls(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/host", n)
-	http.HandleFunc("/ip", i)
-	http.HandleFunc("/env", e)
-	http.HandleFunc("/headers", h)
-	http.HandleFunc("/hello", hello)
-	http.HandleFunc("/ls", ls)
-	http.HandleFunc("/", hello)
+	http.HandleFunc("/error", err)   //returns error 500
+	http.HandleFunc("/error2", err2) //returns error 500 every second request
+	http.HandleFunc("/host", n)      //returns hostname
+	http.HandleFunc("/ip", i)        //returns ip address of the host
+	http.HandleFunc("/env", e)       //returns env variables
+	http.HandleFunc("/headers", h)   //returns headers
+	http.HandleFunc("/hello", hello) //returns hostname, ip address and vslue of RETURN_TEXT env variable if available
+	http.HandleFunc("/ls", ls)       //returns directory contents; use ?path=PATH to select a directory
+	http.HandleFunc("/", hello)      //returns hostname, ip address and vslue of RETURN_TEXT env variable if available
 	http.ListenAndServe(":8080", nil)
 }
