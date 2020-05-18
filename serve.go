@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 )
 
 var requestCount int = 0
@@ -98,7 +99,38 @@ func ls(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func req(w http.ResponseWriter, r *http.Request) {
+	d := r.URL.Query()
+	var url string
+	if len(d["url"]) > 0 {
+		url = d["url"][0]
+	}
+	if len(url) == 0 {
+		url = "http://google.com"
+	}
+
+	var netClient = &http.Client{
+		Timeout: time.Second * 10,
+	}
+
+	resp, err := netClient.Get(url)
+	if err != nil {
+		panic(err)
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprintln(w, string(body))
+
+}
+
 func main() {
+	http.HandleFunc("/req", req)     //sends request to external service and retuns its response; use ?url=
 	http.HandleFunc("/error", err)   //returns error 500
 	http.HandleFunc("/error2", err2) //returns error 500 every second request
 	http.HandleFunc("/host", n)      //returns hostname

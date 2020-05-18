@@ -1,5 +1,5 @@
 Simple http server that can be used as a multitool for testing and learning.
-
+* "/req"      - sends request to external service and retuns its response; use ?url=
 * "/error"    - returns error 500
 * "/error2"   - returns error 500 every second request
 * "/host"     - returns hostname
