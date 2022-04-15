@@ -1,6 +1,8 @@
-FROM golang:1.14.2-alpine AS build
+FROM golang:1.18.1-bullseye AS build
 
-COPY serve.go ./
+RUN mkdir src/multitoolserver
+WORKDIR /src/multitoolserver
+COPY ./src .
 RUN CGO_ENABLED=0 go build -o /bin/serv
 
 FROM scratch
