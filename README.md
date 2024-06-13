@@ -8,6 +8,7 @@ Simple http server that can be used as a multitool for testing and learning.
 * "/headers"  - returns headers
 * "/hello"    - returns hostname, ip address and vslue of RETURN_TEXT env * variable if available
 * "/ls"       - returns directory contents; use ?path=PATH to select a directory
+* "/source"   - returns source IP address
 * "/"         - returns hostname, ip address and value of RETURN_TEXT env variable if available
 
 ```

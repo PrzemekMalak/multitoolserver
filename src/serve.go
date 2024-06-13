@@ -65,6 +65,10 @@ func h(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
+func r(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "-------------------")
+	fmt.Fprintln(w, r.RemoteAddr)
+}
 
 func err2(w http.ResponseWriter, r *http.Request) {
 	requestCount++
@@ -131,6 +135,7 @@ func req(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.HandleFunc("/req", req)     //sends request to external service and retuns its response; use ?url=
+	http.HandleFunc("/source", r)    //returns source ip
 	http.HandleFunc("/error", err)   //returns error 500
 	http.HandleFunc("/error2", err2) //returns error 500 every second request
 	http.HandleFunc("/host", n)      //returns hostname
