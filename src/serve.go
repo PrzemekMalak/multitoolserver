@@ -6,6 +6,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -83,6 +85,25 @@ func err(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 }
 
+// sanitizePath validates and sanitizes the input path to prevent path traversal
+func sanitizePath(inputPath string) (string, error) {
+	// Clean the path to resolve any ".." or "." sequences
+	cleanPath := filepath.Clean(inputPath)
+
+	// Check for any remaining ".." sequences that might have been encoded
+	if strings.Contains(cleanPath, "..") {
+		return "", fmt.Errorf("path traversal not allowed")
+	}
+
+	// Convert to absolute path for final validation
+	absPath, err := filepath.Abs(cleanPath)
+	if err != nil {
+		return "", fmt.Errorf("invalid path: %w", err)
+	}
+
+	return absPath, nil
+}
+
 func ls(w http.ResponseWriter, r *http.Request) {
 	d := r.URL.Query()
 	var dir string
@@ -92,10 +113,19 @@ func ls(w http.ResponseWriter, r *http.Request) {
 	if len(dir) == 0 {
 		dir = "/"
 	}
-	fmt.Fprintln(w, dir)
-	files, err := os.ReadDir(dir)
+
+	// Sanitize the path to prevent path traversal
+	safePath, err := sanitizePath(dir)
 	if err != nil {
-		fmt.Fprintln(w, "")
+		http.Error(w, fmt.Sprintf("Invalid path: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	fmt.Fprintln(w, "Directory:", safePath)
+	files, err := os.ReadDir(safePath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error reading directory: %v", err), http.StatusInternalServerError)
+		return
 	}
 
 	for _, f := range files {
