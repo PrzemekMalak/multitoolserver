@@ -1,0 +1,43 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+multitoolserver
+
+# Output directories
+bin/
+obj/
+
+# Go build cache
+*.out
+
+# Dependency directories (vendor/ is used in older Go projects)
+vendor/
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+*.tar
+
+# Logs
+*.log
+
+# Environment files
+.env
+
+# Coverage
+coverage.out
+
+# Docker Compose override
+docker-compose.override.yml 
