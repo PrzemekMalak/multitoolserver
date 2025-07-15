@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -93,7 +93,7 @@ func ls(w http.ResponseWriter, r *http.Request) {
 		dir = "/"
 	}
 	fmt.Fprintln(w, dir)
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		fmt.Fprintln(w, "")
 	}
@@ -124,7 +124,7 @@ func req(w http.ResponseWriter, r *http.Request) {
 
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 
 	if err != nil {
 		panic(err)
