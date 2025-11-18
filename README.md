@@ -110,11 +110,43 @@ curl http://localhost:8080/hello
 git clone <repository-url>
 cd multitoolserver
 
-# Build the image
+# Build the image (default: x86_64/amd64)
 docker build -t multitoolserver .
+
+# Or explicitly specify platform for x86_64
+docker build --platform linux/amd64 -t multitoolserver .
 
 # Run the container
 docker run -d -p 8080:8080 --name multitoolserver multitoolserver
+```
+
+### Building for Specific Architectures
+
+The Dockerfile is configured to build for **x86_64 (amd64)** architecture by default. To build explicitly:
+
+```bash
+# For x86_64/amd64 (default)
+docker build --platform linux/amd64 -t multitoolserver .
+
+# For ARM64 (if needed)
+docker build --platform linux/arm64 -t multitoolserver:arm64 .
+```
+
+**Note**: The Dockerfile uses `--platform=linux/amd64` and `GOARCH=amd64` to ensure x86_64 compatibility. This is important for AWS ECS and most cloud platforms.
+
+### Using the Build Script
+
+A convenience script is provided for building:
+
+```bash
+# Build for x86_64 (default)
+./build.sh
+
+# Build with custom image name and tag
+IMAGE_NAME=myregistry/multitoolserver TAG=v1.0 ./build.sh
+
+# Build for specific architecture
+ARCH=amd64 ./build.sh
 ```
 
 ### Environment Variables
@@ -173,6 +205,64 @@ spec:
         - name: RETURN_TEXT
           value: "from kubernetes"
 ```
+
+## ☁️ AWS ECS (Fargate)
+
+### Deployment with AWS CDK
+
+This project includes a Python CDK stack for deploying to AWS ECS Fargate with an Application Load Balancer.
+
+#### Prerequisites
+
+- AWS CLI configured with credentials
+- Python 3.8+
+- AWS CDK CLI: `npm install -g aws-cdk`
+
+#### Quick Start
+
+```bash
+# Navigate to CDK directory
+cd cdk
+
+# Create virtual environment
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Bootstrap CDK (first time only)
+cdk bootstrap
+
+# Deploy the stack
+cdk deploy
+```
+
+After deployment, the stack will output the load balancer URL. Access your service at:
+```
+http://<load-balancer-dns-name>
+```
+
+#### Architecture
+
+The CDK stack creates:
+- **VPC** with 2 availability zones
+- **ECS Fargate Cluster** for container orchestration
+- **Task Definition** with 512 MB memory and 256 CPU units
+- **Fargate Service** running 2 tasks for high availability
+- **Application Load Balancer** for external access
+- **CloudWatch Logs** for container logging
+
+#### Configuration
+
+Edit `cdk/multitool_stack.py` to customize:
+- Number of tasks (`desired_count`)
+- CPU and memory allocation
+- Docker image tag
+- Environment variables
+- Health check settings
+
+For detailed instructions, see [cdk/README.md](cdk/README.md).
 
 ## 🛠️ Development
 
