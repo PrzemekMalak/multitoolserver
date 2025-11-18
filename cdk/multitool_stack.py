@@ -53,13 +53,16 @@ class MultitoolStack(Stack):
         # Add container to task definition with enhanced logging
         container = task_definition.add_container(
             "multitool-container",
-            image=ecs.ContainerImage.from_registry("przemekmalak/multitoolserver:latest"),
+            image=ecs.ContainerImage.from_registry("przemekmalak/multitoolserver:latest-amd64"),
             logging=ecs.LogDrivers.aws_logs(
                 stream_prefix="multitool",
                 log_group=log_group,
             ),
             environment={
                 "RETURN_TEXT": "from ECS",
+                # Process monitoring configuration
+                "MONITOR_INTERVAL": "30",  # Collect metrics every 30 seconds
+                "MONITOR_FILTER": "",  # Empty = monitor all processes, or set to "serv" to filter
             },
         )
 
@@ -104,6 +107,19 @@ class MultitoolStack(Stack):
         # Grant CloudWatch Logs permissions for Container Insights
         log_group.grant_write(task_definition.task_role)
 
+        # Create a metric filter to extract process metrics from monitoring logs
+        # This allows querying process/thread metrics in CloudWatch
+        logs.MetricFilter(
+            self,
+            "ProcessMetricsFilter",
+            log_group=log_group,
+            metric_namespace="ECS/ProcessMonitoring",
+            metric_name="ProcessCount",
+            filter_pattern=logs.FilterPattern.exists("$.type"),
+            metric_value="1",
+            default_value=0,
+        )
+
         # Add CloudWatch Container Insights output
         CfnOutput(
             self,
@@ -125,5 +141,20 @@ class MultitoolStack(Stack):
             "ServiceURL",
             value=f"http://{fargate_service.load_balancer.load_balancer_dns_name}",
             description="URL to access the Multitool Server",
+        )
+
+        # Output CloudWatch Logs information
+        CfnOutput(
+            self,
+            "CloudWatchLogGroup",
+            value=log_group.log_group_name,
+            description="CloudWatch Log Group for container and process monitoring logs",
+        )
+
+        CfnOutput(
+            self,
+            "CloudWatchLogsInsights",
+            value=f"https://console.aws.amazon.com/cloudwatch/home?region={self.region}#logsV2:log-groups/log-group/{log_group.log_group_name.replace('/', '$252F')}",
+            description="Link to CloudWatch Logs Insights for querying process monitoring logs",
         )
 

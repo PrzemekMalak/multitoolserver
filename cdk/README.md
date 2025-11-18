@@ -62,6 +62,8 @@ The CDK stack creates:
    - `LoadBalancerDNS`: The DNS name of the load balancer
    - `ServiceURL`: The full URL to access your service
    - `ContainerInsightsDashboard`: Direct link to Container Insights dashboard in CloudWatch
+   - `CloudWatchLogGroup`: The CloudWatch Log Group name for container and process monitoring logs
+   - `CloudWatchLogsInsights`: Direct link to CloudWatch Logs Insights for querying process monitoring logs
 
 ## Configuration
 
@@ -122,6 +124,70 @@ Container Insights provides metrics such as:
 - `NetworkTxBytes`: Network transmit bytes
 - `StorageReadBytes`: Storage read operations
 - `StorageWriteBytes`: Storage write operations
+
+### Process and Thread Monitoring
+
+The container includes a **Python-based process monitoring script** that collects detailed metrics for all processes and threads:
+
+- **Process-level metrics**: CPU%, memory (RSS/VMS), thread count, process name
+- **Thread-level metrics**: Thread IDs and CPU usage per thread
+- **Automatic collection**: Runs in the background, collecting metrics every 30 seconds (configurable)
+
+#### Configuration
+
+Process monitoring is configured via environment variables:
+- `MONITOR_INTERVAL`: Collection interval in seconds (default: 30)
+- `MONITOR_FILTER`: Optional process name filter (e.g., "serv" to only monitor processes containing "serv")
+
+#### Viewing Process Monitoring Logs
+
+Process monitoring logs are output as structured JSON and captured in CloudWatch Logs:
+
+```bash
+# View all logs including process metrics
+aws logs tail /aws/ecs/multitool --follow
+
+# Filter for process monitoring logs only
+aws logs tail /aws/ecs/multitool --follow --filter-pattern "process_metrics"
+
+# View logs for a specific task
+aws logs tail /aws/ecs/multitool --follow --filter-pattern "multitool-container"
+```
+
+#### Querying Process Metrics in CloudWatch Logs Insights
+
+Use CloudWatch Logs Insights to analyze process metrics:
+
+```sql
+-- Get all process metrics
+fields @timestamp, type, total_processes
+| filter type = "process_metrics"
+| sort @timestamp desc
+
+-- Find processes with high CPU usage
+fields @timestamp, processes[].pid, processes[].name, processes[].cpu_percent
+| filter type = "process_metrics"
+| filter processes[].cpu_percent > 50
+| sort processes[].cpu_percent desc
+
+-- Find processes with high memory usage
+fields @timestamp, processes[].pid, processes[].name, processes[].memory_rss_mb
+| filter type = "process_metrics"
+| filter processes[].memory_rss_mb > 100
+| sort processes[].memory_rss_mb desc
+
+-- Count threads per process over time
+fields @timestamp, processes[].name, processes[].num_threads
+| filter type = "process_metrics"
+| stats avg(processes[].num_threads) as avg_threads by processes[].name
+```
+
+#### Metric Filter
+
+A CloudWatch metric filter automatically extracts process count metrics:
+- **Namespace**: `ECS/ProcessMonitoring`
+- **Metric**: `ProcessCount`
+- Available in CloudWatch Metrics for creating alarms and dashboards
 
 ### Viewing Logs
 
