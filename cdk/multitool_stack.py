@@ -1,10 +1,12 @@
 from aws_cdk import (
     Stack,
     Duration,
+    RemovalPolicy,
     aws_ec2 as ec2,
     aws_ecs as ecs,
     aws_ecs_patterns as ecs_patterns,
     aws_iam as iam,
+    aws_logs as logs,
     CfnOutput,
 )
 from constructs import Construct
@@ -22,12 +24,22 @@ class MultitoolStack(Stack):
             nat_gateways=1,
         )
 
-        # Create ECS Cluster
+        # Create CloudWatch Log Group for Container Insights
+        log_group = logs.LogGroup(
+            self,
+            "MultitoolLogGroup",
+            log_group_name="/aws/ecs/multitool",
+            retention=logs.RetentionDays.ONE_WEEK,
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
+        # Create ECS Cluster with Container Insights enabled
         cluster = ecs.Cluster(
             self,
             "MultitoolCluster",
             vpc=vpc,
             cluster_name="multitool-cluster",
+            container_insights=True,  # Enable Container Insights
         )
 
         # Create Fargate Task Definition
@@ -38,12 +50,13 @@ class MultitoolStack(Stack):
             cpu=256,
         )
 
-        # Add container to task definition
+        # Add container to task definition with enhanced logging
         container = task_definition.add_container(
             "multitool-container",
             image=ecs.ContainerImage.from_registry("przemekmalak/multitoolserver:latest"),
             logging=ecs.LogDrivers.aws_logs(
                 stream_prefix="multitool",
+                log_group=log_group,
             ),
             environment={
                 "RETURN_TEXT": "from ECS",
@@ -86,6 +99,17 @@ class MultitoolStack(Stack):
                 actions=["ec2:DescribeNetworkInterfaces"],
                 resources=["*"],
             )
+        )
+
+        # Grant CloudWatch Logs permissions for Container Insights
+        log_group.grant_write(task_definition.task_role)
+
+        # Add CloudWatch Container Insights output
+        CfnOutput(
+            self,
+            "ContainerInsightsDashboard",
+            value=f"https://console.aws.amazon.com/cloudwatch/home?region={self.region}#containerInsights:clusters/multitool-cluster",
+            description="Link to Container Insights dashboard in CloudWatch",
         )
 
         # Output the load balancer URL
