@@ -110,8 +110,11 @@ curl http://localhost:8080/hello
 git clone <repository-url>
 cd multitoolserver
 
-# Build the image
-docker build -t multitoolserver .
+# Build the image (AMD64 architecture)
+docker build --platform linux/amd64 -t multitoolserver .
+
+# Or using buildx for multi-platform support
+docker buildx build --platform linux/amd64,linux/arm64 -t multitoolserver --load .
 
 # Run the container
 docker run -d -p 8080:8080 --name multitoolserver multitoolserver
@@ -122,13 +125,36 @@ docker run -d -p 8080:8080 --name multitoolserver multitoolserver
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `RETURN_TEXT` | Custom text to append to hello responses | (empty) |
+| `COMPONENT` | Component name identifier | `component0` |
 
 Example:
 ```bash
 docker run -d -p 8080:8080 \
   -e RETURN_TEXT="from container" \
+  -e COMPONENT="service-1" \
   --name multitoolserver \
   przemekmalak/multitoolserver
+```
+
+## ☁️ Google Cloud Run
+
+### Deploy to Cloud Run
+
+```bash
+# Build and push to Docker Hub (for AMD64 architecture)
+docker buildx build --platform linux/amd64 -t przemekmalak/multitoolserver:latest --push .
+
+# Deploy to Cloud Run
+gcloud run deploy multitoolserver \
+  --image przemekmalak/multitoolserver:latest \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --port 8080 \
+  --set-env-vars RETURN_TEXT="from cloud run"
+
+# Get the service URL
+gcloud run services describe multitoolserver --region us-central1 --format 'value(status.url)'
 ```
 
 ## ☸️ Kubernetes
@@ -178,7 +204,7 @@ spec:
 
 ### Prerequisites
 
-- Go 1.24 or later
+- Go 1.23 or later
 - Docker (optional)
 
 ### Local Development

@@ -14,6 +14,14 @@ import (
 )
 
 var requestCount int = 0
+var component string
+
+func init() {
+	component = os.Getenv("COMPONENT")
+	if component == "" {
+		component = "component0"
+	}
+}
 
 func name() string {
 	name, err := os.Hostname()
